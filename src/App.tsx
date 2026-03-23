@@ -7,9 +7,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 // Note: react-native-screens is shimmed in index.js for iOS New Architecture compatibility
 import { RunAnywhere, SDKEnvironment } from '@runanywhere/core';
 import { ModelServiceProvider, registerDefaultModels } from './services/ModelService';
+import { FinanceProvider } from './store/FinanceContext';
 import { AppColors } from './theme';
 import {
-  HomeScreen,
+  DashboardScreen,
+  LogTransactionScreen,
+  TransactionHistoryScreen,
+  AIAdvisorScreen,
   ChatScreen,
   ToolCallingScreen,
   SpeechToTextScreen,
@@ -54,8 +58,9 @@ const App: React.FC = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ModelServiceProvider>
-        <StatusBar barStyle="light-content" backgroundColor={AppColors.primaryDark} />
-        <NavigationContainer>
+        <FinanceProvider>
+          <StatusBar barStyle="light-content" backgroundColor={AppColors.primaryDark} />
+          <NavigationContainer>
           <Stack.Navigator
             screenOptions={{
               headerStyle: {
@@ -76,9 +81,24 @@ const App: React.FC = () => {
             }}
           >
             <Stack.Screen
-              name="Home"
-              component={HomeScreen}
+              name="Dashboard"
+              component={DashboardScreen}
               options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="LogTransaction"
+              component={LogTransactionScreen}
+              options={{ title: 'Log Transaction' }}
+            />
+            <Stack.Screen
+              name="TransactionHistory"
+              component={TransactionHistoryScreen}
+              options={{ title: 'Transaction History' }}
+            />
+            <Stack.Screen
+              name="AIAdvisor"
+              component={AIAdvisorScreen}
+              options={{ title: 'AI Advisor' }}
             />
             <Stack.Screen
               name="Chat"
@@ -107,6 +127,7 @@ const App: React.FC = () => {
             />
           </Stack.Navigator>
         </NavigationContainer>
+        </FinanceProvider>
       </ModelServiceProvider>
     </GestureHandlerRootView>
   );

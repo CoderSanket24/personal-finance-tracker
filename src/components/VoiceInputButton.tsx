@@ -3,9 +3,11 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  View,
   ActivityIndicator,
   Animated,
+  PermissionsAndroid,
+  Platform,
+  View,
 } from 'react-native';
 import { AppColors } from '../theme';
 import { RunAnywhere } from '@runanywhere/core';
@@ -14,12 +16,18 @@ import LiveAudioStream from 'react-native-live-audio-stream';
 interface VoiceInputButtonProps {
   onTranscript: (text: string) => void;
   isSTTLoaded: boolean;
+  isSTTDownloading?: boolean;
+  isSTTLoading?: boolean;
+  sttDownloadProgress?: number;
   disabled?: boolean;
 }
 
 export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   onTranscript,
   isSTTLoaded,
+  isSTTDownloading = false,
+  isSTTLoading = false,
+  sttDownloadProgress = 0,
   disabled = false,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -53,9 +61,11 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       if (audioChunksRef.current.length === 0) return;
 
       setIsTranscribing(true);
+
       try {
         const combined = audioChunksRef.current.join('');
         audioChunksRef.current = [];
+        
         const result = await RunAnywhere.transcribe(combined, {
           language: 'en',
           punctuation: true,
@@ -68,17 +78,41 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       }
     } else {
       // Start recording
+      
+      // 1. Request Permission first (Android requires this at runtime)
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          {
+            title: 'Microphone Permission',
+            message: 'App needs access to your microphone to transcribe transactions.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          console.warn('Microphone permission denied');
+          return;
+        }
+      }
+
+      // 2. Initialize
       audioChunksRef.current = [];
       LiveAudioStream.init({
         sampleRate: 16000,
         channels: 1,
         bitsPerSample: 16,
         audioSource: 6,
-        bufferSize: 4096,
+        bufferSize: 12288,
+        wavFile: 'temp.wav',
       });
+
       LiveAudioStream.on('data', (data: string) => {
-        audioChunksRef.current.push(data);
+        // Strip any base64 padding to ensure safe concatenation
+        audioChunksRef.current.push(data.replace(/=/g, ''));
       });
+      
       LiveAudioStream.start();
       setIsRecording(true);
       startPulse();
@@ -90,6 +124,19 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       <View style={styles.container}>
         <ActivityIndicator color={AppColors.accentViolet} size="small" />
         <Text style={styles.label}>Transcribing…</Text>
+      </View>
+    );
+  }
+
+  if (isSTTDownloading || isSTTLoading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator color={AppColors.accentViolet} size="small" />
+        <Text style={styles.label}>
+          {isSTTDownloading 
+            ? `Downloading Voice AI... (${Math.round(sttDownloadProgress)}%)` 
+            : 'Loading Voice AI...'}
+        </Text>
       </View>
     );
   }
@@ -114,7 +161,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
         <Text style={styles.mic}>{isRecording ? '⏹' : '🎤'}</Text>
       </Animated.View>
       <Text style={styles.label}>
-        {!isSTTLoaded ? 'STT not loaded' : isRecording ? 'Tap to stop' : 'Voice input'}
+        {!isSTTLoaded ? 'Initializing...' : isRecording ? 'Tap to stop' : 'Voice input'}
       </Text>
     </TouchableOpacity>
   );

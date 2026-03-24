@@ -7,6 +7,7 @@ import {
   StyleSheet,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AppColors } from '../theme';
@@ -29,7 +30,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) 
   const handleDelete = useCallback((id: string) => deleteTransaction(id), [deleteTransaction]);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <LinearGradient
         colors={[AppColors.primaryDark, '#0F1629', AppColors.primaryMid]}
@@ -123,18 +124,18 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) 
           </View>
         </ScrollView>
       </LinearGradient>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: AppColors.primaryDark },
   gradient: { flex: 1 },
-  content: { padding: 20, paddingTop: 56, paddingBottom: 32 },
+  content: { padding: 20, paddingTop: 16, paddingBottom: 32 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 24,
   },
   greeting: { fontSize: 13, color: AppColors.textMuted, marginBottom: 2 },

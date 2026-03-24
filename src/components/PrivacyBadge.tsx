@@ -1,11 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { AppColors } from '../theme';
 
-export const PrivacyBadge: React.FC = () => (
-  <View style={styles.badge}>
+interface PrivacyBadgeProps {
+  style?: StyleProp<ViewStyle>;
+}
+
+export const PrivacyBadge: React.FC<PrivacyBadgeProps> = ({ style }) => (
+  <View style={[styles.badge, style]}>
     <Text style={styles.icon}>🔒</Text>
-    <Text style={styles.text}>On-Device AI · No cloud · 100% private</Text>
+    <Text style={styles.text}>On-Device AI</Text>
   </View>
 );
 

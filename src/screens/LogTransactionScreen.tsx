@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AppColors } from '../theme';
@@ -36,7 +37,20 @@ const CATEGORY_IDS = Object.keys(CATEGORIES) as CategoryId[];
 
 export const LogTransactionScreen: React.FC<LogTransactionScreenProps> = ({ navigation }) => {
   const { addTransaction } = useFinance();
-  const { isSTTLoaded } = useModelService();
+  const { 
+    isSTTLoaded, 
+    isSTTDownloading, 
+    isSTTLoading, 
+    downloadAndLoadSTT,
+    sttDownloadProgress
+  } = useModelService();
+
+  useEffect(() => {
+    // Automatically trigger download/load of STT model when screen opens
+    if (!isSTTLoaded && !isSTTDownloading && !isSTTLoading) {
+      downloadAndLoadSTT();
+    }
+  }, [isSTTLoaded, isSTTDownloading, isSTTLoading, downloadAndLoadSTT]);
 
   const [txnType, setTxnType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -77,10 +91,11 @@ export const LogTransactionScreen: React.FC<LogTransactionScreenProps> = ({ navi
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <LinearGradient
         colors={[AppColors.primaryDark, '#0F1629', AppColors.primaryMid]}
         style={styles.gradient}
@@ -139,6 +154,9 @@ export const LogTransactionScreen: React.FC<LogTransactionScreenProps> = ({ navi
             <VoiceInputButton
               onTranscript={handleVoiceTranscript}
               isSTTLoaded={isSTTLoaded}
+              isSTTDownloading={isSTTDownloading}
+              isSTTLoading={isSTTLoading}
+              sttDownloadProgress={sttDownloadProgress}
             />
             <Text style={styles.voiceHint}>
               Say e.g. "500 rupees for groceries" to auto-fill
@@ -172,13 +190,15 @@ export const LogTransactionScreen: React.FC<LogTransactionScreenProps> = ({ navi
         </ScrollView>
       </LinearGradient>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: AppColors.primaryDark },
   container: { flex: 1, backgroundColor: AppColors.primaryDark },
   gradient: { flex: 1 },
-  content: { padding: 20, paddingTop: 24, paddingBottom: 40 },
+  content: { padding: 20, paddingTop: 0, paddingBottom: 40 },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

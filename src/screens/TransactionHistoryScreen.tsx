@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { AppColors } from '../theme';
 import { useFinance } from '../store/FinanceContext';
@@ -33,7 +34,7 @@ export const TransactionHistoryScreen: React.FC = () => {
   }, [state.transactions, filterType, filterCat, search]);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <LinearGradient
         colors={[AppColors.primaryDark, '#0F1629', AppColors.primaryMid]}
         style={styles.gradient}
@@ -131,7 +132,7 @@ export const TransactionHistoryScreen: React.FC = () => {
           }
         />
       </LinearGradient>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 0,
     paddingBottom: 12,
   },
   summaryBox: { flex: 1 },

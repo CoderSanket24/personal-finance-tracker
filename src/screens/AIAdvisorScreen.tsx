@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { AppColors } from '../theme';
 import { useFinance } from '../store/FinanceContext';
@@ -168,7 +169,7 @@ export const AIAdvisorScreen: React.FC = () => {
 
   if (!isLLMLoaded) {
     return (
-      <View style={styles.loaderWrapper}>
+      <SafeAreaView style={styles.loaderWrapper}>
         <LinearGradient
           colors={[AppColors.primaryDark, '#0F1629', AppColors.primaryMid]}
           style={styles.gradient}
@@ -177,8 +178,7 @@ export const AIAdvisorScreen: React.FC = () => {
           <Text style={styles.loaderSub}>
             Load the on-device LLM to start getting personalised, private financial advice.
           </Text>
-          <PrivacyBadge />
-          <View style={{ height: 24 }} />
+          <PrivacyBadge style={{ alignSelf: 'center', marginBottom: 24 }} />
           <ModelLoaderWidget
             title="LFM2 350M – On-Device LLM"
             subtitle="Download once, runs fully offline. Your finances stay private."
@@ -190,16 +190,17 @@ export const AIAdvisorScreen: React.FC = () => {
             onLoad={downloadAndLoadLLM}
           />
         </LinearGradient>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
       <LinearGradient
         colors={[AppColors.primaryDark, '#0F1629', AppColors.primaryMid]}
         style={styles.gradient}
@@ -271,11 +272,13 @@ export const AIAdvisorScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </LinearGradient>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: AppColors.primaryDark },
   container: { flex: 1, backgroundColor: AppColors.primaryDark },
   gradient: { flex: 1 },
   loaderWrapper: { flex: 1, backgroundColor: AppColors.primaryDark },
@@ -283,7 +286,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '800',
     color: AppColors.textPrimary,
-    marginTop: 40,
+    marginTop: 0,
     marginHorizontal: 24,
     marginBottom: 8,
   },
@@ -299,7 +302,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 0,
     paddingBottom: 8,
   },
   generatingBadge: {

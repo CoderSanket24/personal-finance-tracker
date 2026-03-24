@@ -6,19 +6,21 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Markdown from 'react-native-markdown-display';
 import LinearGradient from 'react-native-linear-gradient';
 import { AppColors } from '../theme';
 import { useFinance } from '../store/FinanceContext';
 import { useModelService } from '../services/ModelService';
 import { PrivacyBadge } from '../components/PrivacyBadge';
 import { ModelLoaderWidget } from '../components/ModelLoaderWidget';
-import { streamFinanceAdvice, AIMessage } from '../services/FinanceAIService';
+import { AIMessage } from '../services/FinanceAIService';
+import { LLMService } from '../ai/LLMService';
 
 // ─── Typing indicator ──────────────────────────────────────────────────────
 
@@ -68,13 +70,28 @@ const ti = StyleSheet.create({
 
 interface BubbleProps { message: AIMessage; }
 
+const aiMarkdownStyles = {
+  body: { color: AppColors.textPrimary, fontSize: 14, lineHeight: 21 },
+  strong: { fontWeight: 'bold' as const, color: AppColors.accentCyan },
+  em: { fontStyle: 'italic' as const },
+  list_item: { marginBottom: 4 },
+  paragraph: { marginBottom: 8, marginTop: 0 },
+};
+
+const userMarkdownStyles = {
+  body: { color: '#ffffff', fontSize: 14, lineHeight: 21 },
+  strong: { fontWeight: 'bold' as const, color: '#ffffff' },
+  paragraph: { marginBottom: 0, marginTop: 0 },
+};
+
 const MessageBubble: React.FC<BubbleProps> = ({ message }) => {
   const isUser = message.role === 'user';
   return (
     <View style={[bubble.row, isUser && bubble.rowUser]}>
-      {!isUser && <Text style={bubble.avatar}>🤖</Text>}
       <View style={[bubble.container, isUser ? bubble.userBubble : bubble.aiBubble]}>
-        <Text style={[bubble.text, isUser && bubble.userText]}>{message.content}</Text>
+        <Markdown style={isUser ? userMarkdownStyles : aiMarkdownStyles}>
+          {message.content}
+        </Markdown>
       </View>
     </View>
   );
@@ -83,8 +100,7 @@ const MessageBubble: React.FC<BubbleProps> = ({ message }) => {
 const bubble = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 12, paddingHorizontal: 16 },
   rowUser: { justifyContent: 'flex-end' },
-  avatar: { fontSize: 22, marginRight: 8, marginBottom: 2 },
-  container: { maxWidth: '80%', borderRadius: 18, padding: 14 },
+  container: { maxWidth: '90%', borderRadius: 18, padding: 14 },
   aiBubble: {
     backgroundColor: AppColors.surfaceCard,
     borderBottomLeftRadius: 4,
@@ -144,10 +160,12 @@ export const AIAdvisorScreen: React.FC = () => {
       setMessages(prev => [...prev, aiMsg]);
 
       let accumulated = '';
-      await streamFinanceAdvice(
+      const now = new Date();
+      await LLMService.generateFinancialAdvice(
         userText,
         history,
-        state.transactions,
+        now.getMonth() + 1,
+        now.getFullYear(),
         (token: string) => {
           accumulated += token;
           setMessages(prev => {
@@ -169,7 +187,7 @@ export const AIAdvisorScreen: React.FC = () => {
 
   if (!isLLMLoaded) {
     return (
-      <SafeAreaView style={styles.loaderWrapper}>
+      <SafeAreaView style={styles.loaderWrapper} edges={['bottom', 'left', 'right']}>
         <LinearGradient
           colors={[AppColors.primaryDark, '#0F1629', AppColors.primaryMid]}
           style={styles.gradient}
@@ -195,7 +213,7 @@ export const AIAdvisorScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

@@ -27,14 +27,14 @@ export const TransactionHistoryScreen: React.FC = () => {
       const matchCat  = filterCat  === 'all' || t.categoryId === filterCat;
       const matchSearch =
         !search ||
-        t.description.toLowerCase().includes(search.toLowerCase()) ||
+        (t.description || '').toLowerCase().includes(search.toLowerCase()) ||
         CATEGORIES[t.categoryId].label.toLowerCase().includes(search.toLowerCase());
       return matchType && matchCat && matchSearch;
     });
   }, [state.transactions, filterType, filterCat, search]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <LinearGradient
         colors={[AppColors.primaryDark, '#0F1629', AppColors.primaryMid]}
         style={styles.gradient}

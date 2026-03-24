@@ -1,121 +1,26 @@
 import React, {
   createContext,
   useContext,
-  useReducer,
+  useState,
   useCallback,
   useMemo,
+  useEffect,
 } from 'react';
 import {
   FinanceState,
-  FinanceAction,
   Transaction,
   transactionsForMonth,
   sumByType,
   currentMonthKey,
 } from '../types/finance';
+import { DatabaseService } from '../database/DatabaseService';
 
-// ─── Default seed data (realistic demo) ───────────────────────────────────
-
-const SEED_MONTH = currentMonthKey();
-
-const SEED_TRANSACTIONS: Transaction[] = [
-  {
-    id: '1',
-    type: 'income',
-    amount: 65000,
-    categoryId: 'salary',
-    description: 'Monthly salary – March 2026',
-    date: `${SEED_MONTH}-01`,
-  },
-  {
-    id: '2',
-    type: 'expense',
-    amount: 15000,
-    categoryId: 'rent',
-    description: 'Apartment rent',
-    date: `${SEED_MONTH}-01`,
-  },
-  {
-    id: '3',
-    type: 'expense',
-    amount: 4200,
-    categoryId: 'food',
-    description: 'Groceries + restaurants',
-    date: `${SEED_MONTH}-05`,
-  },
-  {
-    id: '4',
-    type: 'expense',
-    amount: 1800,
-    categoryId: 'transport',
-    description: 'Ola / auto rides',
-    date: `${SEED_MONTH}-08`,
-  },
-  {
-    id: '5',
-    type: 'expense',
-    amount: 2500,
-    categoryId: 'shopping',
-    description: 'Myntra order',
-    date: `${SEED_MONTH}-10`,
-  },
-  {
-    id: '6',
-    type: 'income',
-    amount: 12000,
-    categoryId: 'freelance',
-    description: 'UI design freelance project',
-    date: `${SEED_MONTH}-12`,
-  },
-  {
-    id: '7',
-    type: 'expense',
-    amount: 799,
-    categoryId: 'entertainment',
-    description: 'Netflix subscription',
-    date: `${SEED_MONTH}-15`,
-  },
-  {
-    id: '8',
-    type: 'expense',
-    amount: 1200,
-    categoryId: 'health',
-    description: 'Doctor visit + medicine',
-    date: `${SEED_MONTH}-17`,
-  },
-];
-
-const INITIAL_STATE: FinanceState = {
-  transactions: SEED_TRANSACTIONS,
-  monthlyBudget: 40000,
-};
-
-// ─── Reducer ───────────────────────────────────────────────────────────────
-
-function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
-  switch (action.type) {
-    case 'ADD_TRANSACTION':
-      return { ...state, transactions: [action.payload, ...state.transactions] };
-    case 'DELETE_TRANSACTION':
-      return {
-        ...state,
-        transactions: state.transactions.filter(t => t.id !== action.payload),
-      };
-    case 'SET_BUDGET':
-      return { ...state, monthlyBudget: action.payload };
-    case 'CLEAR_ALL':
-      return { ...state, transactions: [] };
-    default:
-      return state;
-  }
-}
-
-// ─── Context value ─────────────────────────────────────────────────────────
+// App starts explicitly blank for production users
 
 interface FinanceContextValue {
   state: FinanceState;
-  addTransaction: (txn: Transaction) => void;
-  deleteTransaction: (id: string) => void;
+  addTransaction: (txn: Transaction) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
   setBudget: (amount: number) => void;
   monthlyExpenses: number;
   monthlyIncome: number;
@@ -130,21 +35,67 @@ export const useFinance = (): FinanceContextValue => {
   return ctx;
 };
 
-// ─── Provider ──────────────────────────────────────────────────────────────
-
+// ─── Provider: The Bridge between SQLite and React Native ──────────────────
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(financeReducer, INITIAL_STATE);
+  const [state, setState] = useState<FinanceState>({
+    transactions: [],
+    monthlyBudget: 40000, // Legacy fallback
+    walletBalance: 0.0,
+    isDBReady: false,
+  });
 
-  const addTransaction = useCallback((txn: Transaction) => {
-    dispatch({ type: 'ADD_TRANSACTION', payload: txn });
+  // Master synchronization function
+  const synchronizeDB = useCallback(async () => {
+    try {
+      const dbTransactions = await DatabaseService.getAllTransactions();
+      const dbBalance = await DatabaseService.getWalletBalance();
+
+      // Schema is ready, pure fetch directly to UI
+
+      setState((prev) => ({
+        ...prev,
+        transactions: dbTransactions,
+        walletBalance: dbBalance,
+        isDBReady: true,
+      }));
+    } catch (e) {
+      console.error('Failed to sync DB with UI:', e);
+    }
   }, []);
 
-  const deleteTransaction = useCallback((id: string) => {
-    dispatch({ type: 'DELETE_TRANSACTION', payload: id });
-  }, []);
+  // Boot up the native driver when the app starts
+  useEffect(() => {
+    const initializeDatabase = async () => {
+      try {
+        await DatabaseService.initDB();
+        await synchronizeDB();
+      } catch (err) {
+        console.error('CRITICAL ERROR: Failed to bootstrap SQLite engine:', err);
+      }
+    };
+    initializeDatabase();
+  }, [synchronizeDB]);
+
+  // Native asynchronous wrappers for UI actions
+  const addTransaction = useCallback(async (txn: Transaction) => {
+    await DatabaseService.insertTransaction(txn);
+    await synchronizeDB(); // The DB Trigger updates the wallet balance automatically!
+  }, [synchronizeDB]);
+
+  const deleteTransaction = useCallback(async (id: string) => {
+    // Note: Since we didn't define deleteTransaction in DAO yet, doing a raw fallback query for the UI:
+    const { open } = require('@op-engineering/op-sqlite');
+    const db = open({ name: 'hackxtreme_finance.sqlite' });
+    try {
+      await db.executeAsync('DELETE FROM Transactions WHERE id = ?', [id]);
+      await synchronizeDB();
+    } catch (e) {
+      console.error('DB Delete Error:', e);
+    }
+  }, [synchronizeDB]);
 
   const setBudget = useCallback((amount: number) => {
-    dispatch({ type: 'SET_BUDGET', payload: amount });
+    setState((prev) => ({ ...prev, monthlyBudget: amount }));
   }, []);
 
   const currentMonthTxns = useMemo(
@@ -172,5 +123,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     currentMonthTxns,
   };
 
+  // If the DB is strict required, we could render <ActivityIndicator> if !state.isDBReady here.
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 };

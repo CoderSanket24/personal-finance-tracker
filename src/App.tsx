@@ -1,11 +1,13 @@
 import 'react-native-gesture-handler'; // Must be at the top!
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, TransitionPresets } from '@react-navigation/stack';
 import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 // Note: react-native-screens is shimmed in index.js for iOS New Architecture compatibility
 import { RunAnywhere, SDKEnvironment } from '@runanywhere/core';
+import { LlamaCPP } from '@runanywhere/llamacpp';
+import { ONNX } from '@runanywhere/onnx';
 import { ModelServiceProvider, registerDefaultModels } from './services/ModelService';
 import { FinanceProvider } from './store/FinanceContext';
 import { AppColors } from './theme';
@@ -22,11 +24,11 @@ import {
 } from './screens';
 import { RootStackParamList } from './navigation/types';
 
-// Using JS-based stack navigator instead of native-stack
-// to avoid react-native-screens setColor crash with New Architecture
 const Stack = createStackNavigator<RootStackParamList>();
 
 const App: React.FC = () => {
+  const [isSDKReady, setIsSDKReady] = useState(false);
+
   useEffect(() => {
     // Initialize SDK
     const initializeSDK = async () => {
@@ -36,10 +38,7 @@ const App: React.FC = () => {
           environment: SDKEnvironment.Development,
         });
 
-        // Register backends (per docs: https://docs.runanywhere.ai/react-native/quick-start)
-        const { LlamaCPP } = await import('@runanywhere/llamacpp');
-        const { ONNX } = await import('@runanywhere/onnx');
-        
+        // Register backends statically
         LlamaCPP.register();
         ONNX.register();
 
@@ -47,13 +46,19 @@ const App: React.FC = () => {
         await registerDefaultModels();
 
         console.log('RunAnywhere SDK initialized successfully');
+        setIsSDKReady(true);
       } catch (error) {
         console.error('Failed to initialize RunAnywhere SDK:', error);
+        setIsSDKReady(true);
       }
     };
 
     initializeSDK();
   }, []);
+
+  if (!isSDKReady) {
+    return null;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

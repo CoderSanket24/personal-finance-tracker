@@ -37,13 +37,14 @@ export const CATEGORIES: Record<CategoryId, Category> = {
 };
 
 export interface Transaction {
-  id: string;
-  type: TransactionType;
-  amount: number;           // in ₹ (paise stored as float)
+  id: string; // UUID String
+  type: 'income' | 'expense';
+  amount: number;
   categoryId: CategoryId;
-  description: string;
-  date: string;             // ISO-8601 date string
-  isVoiceLogged?: boolean;
+  description?: string; // Optional user note
+  merchant?: string; // New: AI extracted merchant
+  date: string; // YYYY-MM-DD
+  isVoiceLogged?: boolean; // New: Flag for UI rendering
 }
 
 // ─── State ─────────────────────────────────────────────────────────────────
@@ -51,6 +52,8 @@ export interface Transaction {
 export interface FinanceState {
   transactions: Transaction[];
   monthlyBudget: number;
+  walletBalance: number;
+  isDBReady: boolean;
 }
 
 // ─── Actions ───────────────────────────────────────────────────────────────
